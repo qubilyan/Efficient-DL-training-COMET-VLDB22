@@ -64,4 +64,34 @@ Based on the solver setting, we will print the training loss function every 100 
     I0317 21:53:12.185698 2008298256 solver.cpp:65] Iteration 100, loss = 1.73643
     ...
     I0317 21:54:41.150030 2008298256 solver.cpp:87] Iteration 500, Testing net
-   
+    I0317 21:54:47.129461 2008298256 solver.cpp:114] Test score #0: 0.5504
+    I0317 21:54:47.129500 2008298256 solver.cpp:114] Test score #1: 1.27805
+
+For each training iteration, `lr` is the learning rate of that iteration, and `loss` is the training function. For the output of the testing phase, **score 0 is the accuracy**, and **score 1 is the testing loss function**.
+
+And after making yourself a cup of coffee, you are done!
+
+    I0317 22:12:19.666914 2008298256 solver.cpp:87] Iteration 5000, Testing net
+    I0317 22:12:25.580330 2008298256 solver.cpp:114] Test score #0: 0.7533
+    I0317 22:12:25.580379 2008298256 solver.cpp:114] Test score #1: 0.739837
+    I0317 22:12:25.587262 2008298256 solver.cpp:130] Snapshotting to cifar10_quick_iter_5000
+    I0317 22:12:25.590215 2008298256 solver.cpp:137] Snapshotting solver state to cifar10_quick_iter_5000.solverstate
+    I0317 22:12:25.592813 2008298256 solver.cpp:81] Optimization Done.
+
+Our model achieved ~75% test accuracy. The model parameters are stored in binary protobuf format in
+
+    cifar10_quick_iter_5000
+
+which is ready-to-deploy in CPU or GPU mode! Refer to the `CAFFE_ROOT/examples/cifar10/cifar10_quick.prototxt` for the deployment model definition that can be called on new data.
+
+Why train on a GPU?
+-------------------
+
+CIFAR-10, while still small, has enough data to make GPU training attractive.
+
+To compare CPU vs. GPU training speed, simply change one line in all the `cifar*solver.prototxt`:
+
+    # solver mode: CPU or GPU
+    solver_mode: CPU
+
+and you will be using CPU for training.
