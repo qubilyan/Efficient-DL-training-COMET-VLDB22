@@ -80,4 +80,19 @@ if __name__ == '__main__':
     # Download images.
     num_workers = args.workers
     if num_workers <= 0:
-        num_workers = multiprocessing.cpu_
+        num_workers = multiprocessing.cpu_count() + num_workers
+    print('Downloading {} images with {} workers...'.format(
+        df.shape[0], num_workers))
+    pool = multiprocessing.Pool(processes=num_workers)
+    map_args = zip(df['image_url'], df['image_filename'])
+    results = pool.map(download_image, map_args)
+
+    # Only keep rows with valid images, and write out training file lists.
+    df = df[results]
+    for split in ['train', 'test']:
+        split_df = df[df['_split'] == split]
+        filename = os.path.join(training_dirname, '{}.txt'.format(split))
+        split_df[['image_filename', 'label']].to_csv(
+            filename, sep=' ', header=None, index=None)
+    print('Writing train/val for {} successfully downloaded images.'.format(
+        df.shape[0]))
