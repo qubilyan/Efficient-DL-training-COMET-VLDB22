@@ -93,4 +93,9 @@ class ContrastiveLossLayer : public LossLayer<Dtype> {
   Blob<Dtype> diff_;  // cached for backward pass
   Blob<Dtype> dist_sq_;  // cached for backward pass
   Blob<Dtype> diff_sq_;  // tmp storage for gpu forward pass
-  Blob<D
+  Blob<Dtype> summer_vec_;  // tmp storage for gpu forward pass
+};
+
+}  // namespace caffe
+
+#endif  // CAFFE_CONTRASTIVE_LOSS_LAYER_HPP_
