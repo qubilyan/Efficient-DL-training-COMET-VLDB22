@@ -1,5 +1,5 @@
-#ifndef CAFFE_POOLING_LAYER_HPP_
-#define CAFFE_POOLING_LAYER_HPP_
+#ifndef CAFFE_REDUCTION_LAYER_HPP_
+#define CAFFE_REDUCTION_LAYER_HPP_
 
 #include <vector>
 
@@ -10,29 +10,25 @@
 namespace caffe {
 
 /**
- * @brief Pools the input image by taking the max, average, etc. within regions.
+ * @brief Compute "reductions" -- operations that return a scalar output Blob
+ *        for an input Blob of arbitrary size, such as the sum, absolute sum,
+ *        and sum of squares.
  *
  * TODO(dox): thorough documentation for Forward, Backward, and proto params.
  */
 template <typename Dtype>
-class PoolingLayer : public Layer<Dtype> {
+class ReductionLayer : public Layer<Dtype> {
  public:
-  explicit PoolingLayer(const LayerParameter& param)
+  explicit ReductionLayer(const LayerParameter& param)
       : Layer<Dtype>(param) {}
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
-  virtual inline const char* type() const { return "Pooling"; }
+  virtual inline const char* type() const { return "Reduction"; }
   virtual inline int ExactNumBottomBlobs() const { return 1; }
-  virtual inline int MinTopBlobs() const { return 1; }
-  // MAX POOL layers can output an extra top blob for the mask;
-  // others can only output the pooled inputs.
-  virtual inline int MaxTopBlobs() const {
-    return (this->layer_param_.pooling_param().pool() ==
-            PoolingParameter_PoolMethod_MAX) ? 2 : 1;
-  }
+  virtual inline int ExactNumTopBlobs() const { return 1; }
 
  protected:
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
@@ -44,18 +40,20 @@ class PoolingLayer : public Layer<Dtype> {
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
-  int kernel_h_, kernel_w_;
-  int stride_h_, stride_w_;
-  int pad_h_, pad_w_;
-  int channels_;
-  int height_, width_;
-  int pooled_height_, pooled_width_;
-  bool global_pooling_;
-  PoolingParameter_RoundMode round_mode_;
-  Blob<Dtype> rand_idx_;
-  Blob<int> max_idx_;
+  /// @brief the reduction operation performed by the layer
+  ReductionParameter_ReductionOp op_;
+  /// @brief a scalar coefficient applied to all outputs
+  Dtype coeff_;
+  /// @brief the index of the first input axis to reduce
+  int axis_;
+  /// @brief the number of reductions performed
+  int num_;
+  /// @brief the input size of each reduction
+  int dim_;
+  /// @brief a helper Blob used for summation (op_ == SUM)
+  Blob<Dtype> sum_multiplier_;
 };
 
 }  // namespace caffe
 
-#endif  // CAFFE_POOLING_LAYER_HPP_
+#endif  // CAFFE_REDUCTION_LAYER_HPP_
