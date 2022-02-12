@@ -1,7 +1,8 @@
-name: "CaffeNet"
+
+name: "FlickrStyleCaffeNet"
 layer {
   name: "data"
-  type: "Data"
+  type: "ImageData"
   top: "data"
   top: "label"
   include {
@@ -12,23 +13,16 @@ layer {
     crop_size: 227
     mean_file: "data/ilsvrc12/imagenet_mean.binaryproto"
   }
-# mean pixel / channel-wise mean instead of mean image
-#  transform_param {
-#    crop_size: 227
-#    mean_value: 104
-#    mean_value: 117
-#    mean_value: 123
-#    mirror: true
-#  }
-  data_param {
-    source: "examples/imagenet/ilsvrc12_train_lmdb"
-    batch_size: 256
-    backend: LMDB
+  image_data_param {
+    source: "data/flickr_style/train.txt"
+    batch_size: 50
+    new_height: 256
+    new_width: 256
   }
 }
 layer {
   name: "data"
-  type: "Data"
+  type: "ImageData"
   top: "data"
   top: "label"
   include {
@@ -39,18 +33,11 @@ layer {
     crop_size: 227
     mean_file: "data/ilsvrc12/imagenet_mean.binaryproto"
   }
-# mean pixel / channel-wise mean instead of mean image
-#  transform_param {
-#    crop_size: 227
-#    mean_value: 104
-#    mean_value: 117
-#    mean_value: 123
-#    mirror: false
-#  }
-  data_param {
-    source: "examples/imagenet/ilsvrc12_val_lmdb"
+  image_data_param {
+    source: "data/flickr_style/test.txt"
     batch_size: 50
-    backend: LMDB
+    new_height: 256
+    new_width: 256
   }
 }
 layer {
@@ -321,6 +308,7 @@ layer {
   type: "InnerProduct"
   bottom: "fc6"
   top: "fc7"
+  # Note that lr_mult can be set to 0 to disable any fine-tuning of this, and any other, layer
   param {
     lr_mult: 1
     decay_mult: 1
@@ -357,20 +345,21 @@ layer {
   }
 }
 layer {
-  name: "fc8"
+  name: "fc8_flickr"
   type: "InnerProduct"
   bottom: "fc7"
-  top: "fc8"
+  top: "fc8_flickr"
+  # lr_mult is set to higher than for other layers, because this layer is starting from random while the others are already trained
   param {
-    lr_mult: 1
+    lr_mult: 10
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 20
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 1000
+    num_output: 20
     weight_filler {
       type: "gaussian"
       std: 0.01
@@ -384,7 +373,7 @@ layer {
 layer {
   name: "accuracy"
   type: "Accuracy"
-  bottom: "fc8"
+  bottom: "fc8_flickr"
   bottom: "label"
   top: "accuracy"
   include {
@@ -394,7 +383,7 @@ layer {
 layer {
   name: "loss"
   type: "SoftmaxWithLoss"
-  bottom: "fc8"
+  bottom: "fc8_flickr"
   bottom: "label"
   top: "loss"
 }
