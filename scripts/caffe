@@ -1,0 +1,6 @@
+# bash completion for Caffe's command line utility       -*- shell-script -*-
+# COPYRIGHT (C) 2015,2016 Zhou Mo <cdluminate@gmail.com>
+# License: BSD-2-Clause
+# Originally appeard at https://github.com/BVLC/caffe/issues/3149
+
+# Updated for 
