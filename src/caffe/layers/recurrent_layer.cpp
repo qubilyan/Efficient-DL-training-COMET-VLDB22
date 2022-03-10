@@ -183,4 +183,114 @@ template <typename Dtype>
 void RecurrentLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   CHECK_GE(bottom[0]->num_axes(), 2)
-      << "bottom[0] must have at least 2 axes -- (#timesteps, #str
+      << "bottom[0] must have at least 2 axes -- (#timesteps, #streams, ...)";
+  CHECK_EQ(T_, bottom[0]->shape(0)) << "input number of timesteps changed";
+  N_ = bottom[0]->shape(1);
+  CHECK_EQ(bottom[1]->num_axes(), 2)
+      << "bottom[1] must have exactly 2 axes -- (#timesteps, #streams)";
+  CHECK_EQ(T_, bottom[1]->shape(0));
+  CHECK_EQ(N_, bottom[1]->shape(1));
+  x_input_blob_->ReshapeLike(*bottom[0]);
+  vector<int> cont_shape = bottom[1]->shape();
+  cont_input_blob_->Reshape(cont_shape);
+  if (static_input_) {
+    x_static_input_blob_->ReshapeLike(*bottom[2]);
+  }
+  vector<BlobShape> recur_input_shapes;
+  RecurrentInputShapes(&recur_input_shapes);
+  CHECK_EQ(recur_input_shapes.size(), recur_input_blobs_.size());
+  for (int i = 0; i < recur_input_shapes.size(); ++i) {
+    recur_input_blobs_[i]->Reshape(recur_input_shapes[i]);
+  }
+  unrolled_net_->Reshape();
+  x_input_blob_->ShareData(*bottom[0]);
+  x_input_blob_->ShareDiff(*bottom[0]);
+  cont_input_blob_->ShareData(*bottom[1]);
+  if (static_input_) {
+    x_static_input_blob_->ShareData(*bottom[2]);
+    x_static_input_blob_->ShareDiff(*bottom[2]);
+  }
+  if (expose_hidden_) {
+    const int bottom_offset = 2 + static_input_;
+    for (int i = bottom_offset, j = 0; i < bottom.size(); ++i, ++j) {
+      CHECK(recur_input_blobs_[j]->shape() == bottom[i]->shape())
+          << "shape mismatch - recur_input_blobs_[" << j << "]: "
+          << recur_input_blobs_[j]->shape_string()
+          << " vs. bottom[" << i << "]: " << bottom[i]->shape_string();
+      recur_input_blobs_[j]->ShareData(*bottom[i]);
+    }
+  }
+  for (int i = 0; i < output_blobs_.size(); ++i) {
+    top[i]->ReshapeLike(*output_blobs_[i]);
+    top[i]->ShareData(*output_blobs_[i]);
+    top[i]->ShareDiff(*output_blobs_[i]);
+  }
+  if (expose_hidden_) {
+    const int top_offset = output_blobs_.size();
+    for (int i = top_offset, j = 0; i < top.size(); ++i, ++j) {
+      top[i]->ReshapeLike(*recur_output_blobs_[j]);
+    }
+  }
+}
+
+template <typename Dtype>
+void RecurrentLayer<Dtype>::Reset() {
+  // "Reset" the hidden state of the net by zeroing out all recurrent outputs.
+  for (int i = 0; i < recur_output_blobs_.size(); ++i) {
+    caffe_set(recur_output_blobs_[i]->count(), Dtype(0),
+              recur_output_blobs_[i]->mutable_cpu_data());
+  }
+}
+
+template <typename Dtype>
+void RecurrentLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+    const vector<Blob<Dtype>*>& top) {
+  // Hacky fix for test time: reshare all the internal shared blobs, which may
+  // currently point to a stale owner blob that was dropped when Solver::Test
+  // called test_net->ShareTrainedLayersWith(net_.get()).
+  // TODO: somehow make this work non-hackily.
+  if (this->phase_ == TEST) {
+    unrolled_net_->ShareWeights();
+  }
+
+  DCHECK_EQ(recur_input_blobs_.size(), recur_output_blobs_.size());
+  if (!expose_hidden_) {
+    for (int i = 0; i < recur_input_blobs_.size(); ++i) {
+      const int count = recur_input_blobs_[i]->count();
+      DCHECK_EQ(count, recur_output_blobs_[i]->count());
+      const Dtype* timestep_T_data = recur_output_blobs_[i]->cpu_data();
+      Dtype* timestep_0_data = recur_input_blobs_[i]->mutable_cpu_data();
+      caffe_copy(count, timestep_T_data, timestep_0_data);
+    }
+  }
+
+  unrolled_net_->ForwardTo(last_layer_index_);
+
+  if (expose_hidden_) {
+    const int top_offset = output_blobs_.size();
+    for (int i = top_offset, j = 0; i < top.size(); ++i, ++j) {
+      top[i]->ShareData(*recur_output_blobs_[j]);
+    }
+  }
+}
+
+template <typename Dtype>
+void RecurrentLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
+    const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
+  CHECK(!propagate_down[1]) << "Cannot backpropagate to sequence indicators.";
+
+  // TODO: skip backpropagation to inputs and parameters inside the unrolled
+  // net according to propagate_down[0] and propagate_down[2]. For now just
+  // backprop to inputs and parameters unconditionally, as either the inputs or
+  // the parameters do need backward (or Net would have set
+  // layer_needs_backward_[i] == false for this layer).
+  unrolled_net_->BackwardFrom(last_layer_index_);
+}
+
+#ifdef CPU_ONLY
+STUB_GPU_FORWARD(RecurrentLayer, Forward);
+#endif
+
+INSTANTIATE_CLASS(RecurrentLayer);
+
+}  // namespace caffe
