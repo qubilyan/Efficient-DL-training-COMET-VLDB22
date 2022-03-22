@@ -457,3 +457,21 @@ void WindowDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
                 sizeof(Dtype));
           }
         }
+      }
+      top_data_file.close();
+      #endif
+
+      item_id++;
+    }
+  }
+  batch_timer.Stop();
+  DLOG(INFO) << "Prefetch batch: " << batch_timer.MilliSeconds() << " ms.";
+  DLOG(INFO) << "     Read time: " << read_time / 1000 << " ms.";
+  DLOG(INFO) << "Transform time: " << trans_time / 1000 << " ms.";
+}
+
+INSTANTIATE_CLASS(WindowDataLayer);
+REGISTER_LAYER_CLASS(WindowData);
+
+}  // namespace caffe
+#endif  // USE_OPENCV
