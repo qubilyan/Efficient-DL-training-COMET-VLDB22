@@ -454,4 +454,14 @@ TYPED_TEST(BiasLayerTest, TestGradientBias) {
 }
 
 TYPED_TEST(BiasLayerTest, TestGradientBiasAxis2) {
-  typedef typename TypeParam::Dtype Dtype
+  typedef typename TypeParam::Dtype Dtype;
+  this->blob_bottom_vec_.push_back(this->blob_bottom_bias_);
+  LayerParameter layer_param;
+  layer_param.mutable_bias_param()->set_axis(2);
+  BiasLayer<Dtype> layer(layer_param);
+  GradientChecker<Dtype> checker(1e-2, 1e-3);
+  checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
+      this->blob_top_vec_);
+}
+
+}  // namespace caffe
