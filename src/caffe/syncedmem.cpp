@@ -129,3 +129,58 @@ void SyncedMemory::set_gpu_data(void* data) {
   gpu_ptr_ = data;
   head_ = HEAD_AT_GPU;
   own_gpu_data_ = false;
+#else
+  NO_GPU;
+#endif
+}
+
+void* SyncedMemory::mutable_cpu_data() {
+  check_device();
+  to_cpu();
+  head_ = HEAD_AT_CPU;
+  return cpu_ptr_;
+}
+
+void* SyncedMemory::mutable_gpu_data() {
+  check_device();
+#ifndef CPU_ONLY
+  to_gpu();
+  head_ = HEAD_AT_GPU;
+  return gpu_ptr_;
+#else
+  NO_GPU;
+  return NULL;
+#endif
+}
+
+#ifndef CPU_ONLY
+void SyncedMemory::async_gpu_push(const cudaStream_t& stream) {
+  check_device();
+  CHECK(head_ == HEAD_AT_CPU);
+  if (gpu_ptr_ == NULL) {
+    CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
+    own_gpu_data_ = true;
+  }
+  const cudaMemcpyKind put = cudaMemcpyHostToDevice;
+  CUDA_CHECK(cudaMemcpyAsync(gpu_ptr_, cpu_ptr_, size_, put, stream));
+  // Assume caller will synchronize on the stream before use
+  head_ = SYNCED;
+}
+#endif
+
+void SyncedMemory::check_device() {
+#ifndef CPU_ONLY
+#ifdef DEBUG
+  int device;
+  cudaGetDevice(&device);
+  CHECK(device == device_);
+  if (gpu_ptr_ && own_gpu_data_) {
+    cudaPointerAttributes attributes;
+    CUDA_CHECK(cudaPointerGetAttributes(&attributes, gpu_ptr_));
+    CHECK(attributes.device == device_);
+  }
+#endif
+#endif
+}
+
+}  // namespace caffe
