@@ -1103,4 +1103,187 @@ TYPED_TEST(AdamSolverTest, TestAdamLeastSquaresUpdate) {
   const Dtype kLearningRate = 0.01;
   const Dtype kWeightDecay = 0;
   const Dtype kMomentum = 0.9;
-  this->TestLeastSquaresUpdate(kLearningRa
+  this->TestLeastSquaresUpdate(kLearningRate, kWeightDecay, kMomentum);
+}
+
+TYPED_TEST(AdamSolverTest, TestAdamLeastSquaresUpdateWithWeightDecay) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0.9;
+  this->TestLeastSquaresUpdate(kLearningRate, kWeightDecay, kMomentum);
+}
+
+TYPED_TEST(AdamSolverTest, TestAdamLeastSquaresUpdateWithEverything) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0.9;
+  const int kNumIters = 4;
+  for (int i = 0; i <= kNumIters; ++i) {
+    this->TestLeastSquaresUpdate(kLearningRate, kWeightDecay, kMomentum, i);
+  }
+}
+
+TYPED_TEST(AdamSolverTest, TestAdamLeastSquaresUpdateWithEverythingShare) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0.9;
+  const int kNumIters = 4;
+  this->share_ = true;
+  for (int i = 0; i <= kNumIters; ++i) {
+    this->TestLeastSquaresUpdate(kLearningRate, kWeightDecay, kMomentum, i);
+  }
+}
+
+TYPED_TEST(AdamSolverTest, TestLeastSquaresUpdateWithEverythingAccum) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0.9;
+  const int kNumIters = 4;
+  const int kIterSize = 2;
+  this->CheckAccumulation(kLearningRate, kWeightDecay, kMomentum, kNumIters,
+      kIterSize);
+}
+
+TYPED_TEST(AdamSolverTest, TestLeastSquaresUpdateWithEverythingAccumShare) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0.9;
+  const int kNumIters = 4;
+  const int kIterSize = 2;
+  this->share_ = true;
+  this->CheckAccumulation(kLearningRate, kWeightDecay, kMomentum, kNumIters,
+      kIterSize);
+}
+
+TYPED_TEST(AdamSolverTest, TestSnapshot) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0.9;
+  const int kNumIters = 4;
+  for (int i = 1; i <= kNumIters; ++i) {
+    this->TestSnapshot(kLearningRate, kWeightDecay, kMomentum, i);
+  }
+}
+
+TYPED_TEST(AdamSolverTest, TestSnapshotShare) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0.9;
+  const int kNumIters = 4;
+  this->share_ = true;
+  for (int i = 1; i <= kNumIters; ++i) {
+    this->TestSnapshot(kLearningRate, kWeightDecay, kMomentum, i);
+  }
+}
+
+template <typename TypeParam>
+class RMSPropSolverTest : public GradientBasedSolverTest<TypeParam> {
+  typedef typename TypeParam::Dtype Dtype;
+
+ protected:
+  virtual void InitSolver(const SolverParameter& param) {
+    const Dtype rms_decay = 0.95;
+    SolverParameter new_param = param;
+    new_param.set_rms_decay(rms_decay);
+    this->solver_.reset(new RMSPropSolver<Dtype>(new_param));
+  }
+};
+
+TYPED_TEST_CASE(RMSPropSolverTest, TestDtypesAndDevices);
+
+TYPED_TEST(RMSPropSolverTest, TestRMSPropLeastSquaresUpdateWithWeightDecay) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 1.0;
+  const Dtype kWeightDecay = 0.5;
+  this->TestLeastSquaresUpdate(kLearningRate, kWeightDecay);
+}
+
+TYPED_TEST(RMSPropSolverTest, TestRMSPropLeastSquaresUpdateWithRmsDecay) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.0;
+  const Dtype kMomentum = 0.0;
+  const int kNumIters = 4;
+  for (int i = 0; i <= kNumIters; ++i) {
+    this->TestLeastSquaresUpdate(kLearningRate, kWeightDecay, kMomentum, i);
+  }
+}
+
+TYPED_TEST(RMSPropSolverTest, TestRMSPropLeastSquaresUpdateWithEverything) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0.0;
+  const int kNumIters = 4;
+  for (int i = 0; i <= kNumIters; ++i) {
+    this->TestLeastSquaresUpdate(kLearningRate, kWeightDecay, kMomentum, i);
+  }
+}
+
+TYPED_TEST(RMSPropSolverTest,
+      TestRMSPropLeastSquaresUpdateWithEverythingShare) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0.0;
+  const int kNumIters = 4;
+  this->share_ = true;
+  for (int i = 0; i <= kNumIters; ++i) {
+    this->TestLeastSquaresUpdate(kLearningRate, kWeightDecay, kMomentum, i);
+  }
+}
+
+TYPED_TEST(RMSPropSolverTest, TestLeastSquaresUpdateWithEverythingAccum) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0.0;
+  const int kNumIters = 4;
+  const int kIterSize = 2;
+  this->CheckAccumulation(kLearningRate, kWeightDecay, kMomentum, kNumIters,
+      kIterSize);
+}
+
+TYPED_TEST(RMSPropSolverTest, TestLeastSquaresUpdateWithEverythingAccumShare) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0.0;
+  const int kNumIters = 4;
+  const int kIterSize = 2;
+  this->share_ = true;
+  this->CheckAccumulation(kLearningRate, kWeightDecay, kMomentum, kNumIters,
+      kIterSize);
+}
+
+TYPED_TEST(RMSPropSolverTest, TestSnapshot) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0;
+  const int kNumIters = 4;
+  for (int i = 1; i <= kNumIters; ++i) {
+    this->TestSnapshot(kLearningRate, kWeightDecay, kMomentum, i);
+  }
+}
+
+TYPED_TEST(RMSPropSolverTest, TestSnapshotShare) {
+  typedef typename TypeParam::Dtype Dtype;
+  const Dtype kLearningRate = 0.01;
+  const Dtype kWeightDecay = 0.5;
+  const Dtype kMomentum = 0;
+  const int kNumIters = 4;
+  this->share_ = true;
+  for (int i = 1; i <= kNumIters; ++i) {
+    this->TestSnapshot(kLearningRate, kWeightDecay, kMomentum, i);
+  }
+}
+
+}  // namespace caffe
